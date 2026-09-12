@@ -1,3 +1,4 @@
+#define _DEFAULT_SOURCE
 #include"shell_prompt.h"
 #include<stdio.h>
 #include<stdlib.h>
@@ -10,13 +11,22 @@
 #include"peek.h"
 #include"locate.h"
 #include"execution.h"
+#include<signal.h>
+#include<errno.h>
+
 int main(){
 
     home();
+struct sigaction sa;
+sa.sa_handler=sigchld;
+sigemptyset(&sa.sa_mask);
+sa.sa_flags=SA_RESTART;
+sigaction(SIGCHLD,&sa,NULL);
     char* line=NULL;
     size_t l=0;
     ssize_t r;
     while(1){
+        print_prs();
         prompt();
         r=getline(&line,&l,stdin);
         if (r==-1){
@@ -32,8 +42,15 @@ int main(){
                 while(curr!=NULL){
                     char*input[256];
                     int count=0;
-                    while(curr!=NULL&&strcmp(curr->val,";")!=0&&count<256){
+                    int bg=0;
+                    while(curr!=NULL&&strcmp(curr->val,";")!=0&&strcmp(curr->val,"&")!=0&&count<256){
                         input[count]=curr->val;count++;
+                        curr=curr->next;
+                    }
+                    if (curr!=NULL&&strcmp(curr->val,"&")==0){bg=1;
+                        curr=curr->next;}
+                    else if (curr!=NULL&&strcmp(curr->val,";")==0){
+                        bg= 0;
                         curr=curr->next;
                     }
                     if (count!=0){
@@ -51,17 +68,17 @@ peek(input+1,count-1);
                             locate(input+1,count-1);
                         }
                         else {
-                            flag=execute(input,count);
+                            flag=execute(input,count,bg);
                         }
-                        if (flag==0)break;
-                    }
-if (curr!=NULL&&strcmp(curr->val,";")==0)curr=curr->next;
-                }
+                        if (flag==0&&!bg)break;
+                    }}
+print_prs();                }
 
                 
             
             freee(tokens);}
-    }}
+    }
+    free(line);
 
     return 0;
 }
