@@ -56,8 +56,8 @@ if (!t){
 }
 return NULL;}
 
-void execute(char**input,int count){
-    if (input[0]==NULL||count==0)return;
+int execute(char**input,int count){
+    if (input[0]==NULL||count==0)return 1;
     int pipeindex[1000];
     int n=1;
     pipeindex[0]=-1;
@@ -76,12 +76,12 @@ void execute(char**input,int count){
         char** cmd_input = &input[start];
         if (cmd_count == 0) {
             fprintf(stderr, "cshell: syntax error near unexpected token `|`\n");
-            break;
+            return 0;
         }
         int fd[2] = {-1, -1};
         if (c < n - 1) {
             if (pipe(fd) < 0) {
-                perror("pipe error");
+                perror("pipe error");return 0;
             }
         }
     char*arg[1000];char*files[1000];int file_count=0;
@@ -90,16 +90,16 @@ void execute(char**input,int count){
     int num=0;
     for (int i=0;i<cmd_count;i++){
         if (strcmp(cmd_input[i],"<")==0){
-            if (i+1>=cmd_count){fprintf(stderr,"cshell: syntax error\n");return;}
+            if (i+1>=cmd_count){fprintf(stderr,"cshell: syntax error\n");return 0;}
             else {files[file_count++]=cmd_input[i+1];i++;}
         }
         else if(strcmp(cmd_input[i],">")==0){
-                        if (i+1>=cmd_count){fprintf(stderr,"cshell: syntax error\n");return;}
+                        if (i+1>=cmd_count){fprintf(stderr,"cshell: syntax error\n");return 0;}
            else {out[out_count]=0;out_files[out_count]=cmd_input[i+1];out_count++;i++;}
 
         }
         else if (strcmp(cmd_input[i],">>")==0){
-                        if (i+1>=cmd_count){fprintf(stderr,"cshell: syntax error\n");return;}
+                        if (i+1>=cmd_count){fprintf(stderr,"cshell: syntax error\n");return 0;}
                   else {out[out_count]=1;out_files[out_count]=cmd_input[i+1];out_count++;i++;}
 
                     }
@@ -115,7 +115,7 @@ void execute(char**input,int count){
         if (stored[i]<0){
             fprintf(stderr,"cshell: no such file or directory\n");
             for (int j=0;j<i;j++)close(stored[j]);
-            return;}
+            return 0;}
     }
 int out_stored[1000];
 for (int i=0;i<out_count;i++){
@@ -125,7 +125,7 @@ for (int i=0;i<out_count;i++){
             fprintf(stderr, "cshell: unable to create file for writing\n");
             for (int j = 0; j < file_count; j++) close(stored[j]);
             for (int j = 0; j < i; j++) close(out_stored[j]);
-            return;
+            return 0;
         }
 }
     char* cmd=arg[0];
@@ -137,7 +137,7 @@ for (int i=0;i<out_count;i++){
         }
         else {fprintf(stderr,"cshell: command not found (%s)\n",cmd);}
         for (int i=0;i<file_count;i++)close(stored[i]);
-        return;
+        return 0;
     }
     if (arg[0][0]=='%'){arg[0]+=1;}
 int pipefd[2] = {-1, -1};
@@ -186,7 +186,7 @@ if (out_count>1){if (pipe(out_pipefd) < 0) {
 
 pid_t pid = fork();
     if (pid < 0) {
-        perror("fork error");
+        perror("fork error");free(p);return 0;
     } 
     else if (pid == 0) {
         if (file_count == 1) {
@@ -242,4 +242,5 @@ writer_pids[c]=writer_pid;
         
     
         }
+        return 1;
 }

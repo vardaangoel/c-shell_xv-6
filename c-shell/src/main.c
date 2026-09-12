@@ -28,61 +28,40 @@ int main(){
         Token*tokens=convert(line);
         if (tokens){if (check(tokens)==0){
             fprintf(stderr, "cshell: invalid syntax\n");}
-            else{
-                if (tokens->type==WORD&&strcmp(tokens->val,"hop")==0){
-                    char*inp[256];
-                    int cnt=0;
-                    Token*curr=tokens->next;
-                    while(curr!=NULL&&curr->type==WORD&&cnt<256){
-                        inp[cnt++]=curr->val;
+            else{Token*curr=tokens;
+                while(curr!=NULL){
+                    char*input[256];
+                    int count=0;
+                    while(curr!=NULL&&strcmp(curr->val,";")!=0&&count<256){
+                        input[count]=curr->val;count++;
                         curr=curr->next;
                     }
-                    hopper(inp,cnt);
-                }
-                else if (tokens->type==WORD&&strcmp(tokens->val,"reveal")==0){
-                    char*input[256];int count=0;
-                    Token*curr=tokens->next;
-                   while (curr != NULL && curr->type == WORD && count < 256) {
-                        input[count++] = curr->val;
-                        curr = curr->next;
+                    if (count!=0){
+                        int flag=1;
+                        if (strcmp(input[0],"hop")==0){
+ hopper(input+1,count-1);
+                        }
+                        else if (strcmp(input[0],"reveal")==0){
+ reveal(input+1, count-1);
+                        }
+                        else if (strcmp(input[0],"peek")==0){
+peek(input+1,count-1);
+                        }
+                        else if (strcmp(input[0],"locate")==0){
+                            locate(input+1,count-1);
+                        }
+                        else {
+                            flag=execute(input,count);
+                        }
+                        if (flag==0)break;
                     }
-                    
-                    reveal(input, count);
+if (curr!=NULL&&strcmp(curr->val,";")==0)curr=curr->next;
                 }
-                else if (tokens->type==WORD&&strcmp(tokens->val,"peek")==0){
-                    char*input[256];int count=0;
-                    Token*curr=tokens->next;
 
-                     while (curr != NULL && curr->type == WORD && count < 256) {
-                        input[count++] = curr->val;
-                        curr = curr->next;
-                    }
-peek(input,count);
-                }
-                else if(tokens->type==WORD&&strcmp(tokens->val,"locate")==0){
-                     char*input[256];int count=0;
-                    Token*curr=tokens->next;
-
-                     while (curr != NULL && curr->type == WORD && count < 256) {
-                        input[count++] = curr->val;
-                        curr = curr->next;
-                    }locate(input,count);
-                }
-                else {
-                    char*input[256];int count=0;
-                                Token*curr=tokens;
-
-                     while (curr != NULL &&count < 256) {
-                        if (strcmp(curr->val, ";") == 0 || strcmp(curr->val, "&") == 0) {
-            break;
-        }
-                        input[count++] = curr->val;
-                        curr = curr->next;
-                    }execute(input,count);
-                }
-                }
+                
             
-            freee(tokens);
+            freee(tokens);}
     }}
+
     return 0;
 }
