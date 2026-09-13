@@ -10,4 +10,5 @@ void send_sighup();
 int stopped();
 void resume(char**input,int count);
 void ping(char**input,int count);
+void spy(char**input,int count);
 #endif

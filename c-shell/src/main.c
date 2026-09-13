@@ -101,6 +101,10 @@ peek(input+1,count-1);
                         else if (strcmp(input[0],"ping")==0){
                             ping(input,count);
                         }
+                        else if (strcmp(input[0],"spy")==0){
+                            spy(input,count);
+                        }
+            
                         else if (strcmp(input[0],"cd")==0){
                             if (count==1){chdir(getenv("HOME"));}
                             else if (count==2){if (chdir(input[1])!=0){

@@ -10,6 +10,8 @@
 #include<signal.h>
 #include<time.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 
 typedef struct{
@@ -400,3 +402,150 @@ fflush(stdout);
         fflush(stdout);
     }
     }
+int compare(const void*a,const void*b){
+    return (*(int*)a-*(int*)b);
+}
+char* type(char*path){
+    struct stat st;
+    if (stat(path,&st)==0){
+    if (S_ISREG(st.st_mode)){
+        return "REG";}
+    if (S_ISDIR(st.st_mode)){
+        return "DIR";}
+    if (S_ISLNK(st.st_mode)){
+        return "LNK";}
+    if (S_ISCHR(st.st_mode)){
+        return "CHR";}
+    if (S_ISBLK(st.st_mode)){
+        return "BLK";}
+    if (S_ISFIFO(st.st_mode)){
+        return "FIFO";}
+    if (S_ISSOCK(st.st_mode)){
+        return "SOCK";}
+    }
+    
+        if (strncmp(path,"socket:",7)==0){
+            return "SOCK";
+        }
+        if (strncmp(path,"pipe:",5)==0){
+            return "FIFO";
+        }
+
+    return "REG";
+}
+
+    void spy(char**input,int count){
+if (count>=3){
+    printf("spy: invalid syntax\n");
+    fflush(stdout); return;
+}
+pid_t pid;
+if (count==1){
+    pid=getpid();   
+    }
+    else{
+        char*target=input[1];
+        if (target[0]=='\0'){
+            printf("spy: invalid syntax\n");
+            fflush(stdout);
+            return;
+        }
+        for (int i=0;target[i]!='\0';i++){
+            if (target[i]<'0'||target[i]>'9'){
+                printf("spy: no such process\n");
+                fflush(stdout);
+                return;
+            }
+        }
+        pid=(pid_t)atoi(target);}
+        char proc[256];
+        char str[100];
+        sprintf(str,"%d",(int)pid);
+        strcpy(proc,"/proc/");
+        strcat(proc,str);
+        if (access(proc,F_OK)!=0){
+            printf("spy: no such process\n");
+            fflush(stdout);
+            return;
+        }
+printf("%-7s %-6s %-6s %s\n","PID","FD","TYPE","PATH");
+char path[1000];
+char link[1000];
+ssize_t len;
+strcpy(link,proc);
+strcat(link,"/cwd");
+len=readlink(link,path,sizeof(path)-1);
+if (len!=-1){
+    path[len]='\0';
+    char*t=type(path);
+    printf("%-7d %-6s %-6s %s\n",(int)pid,"cwd",t,path);
+}
+strcpy(link,proc);
+strcat(link,"/exe");
+len=readlink(link,path,sizeof(path)-1);
+if (len!=-1){
+    path[len]='\0';
+    char*t=type(path);
+    printf("%-7d %-6s %-6s %s\n",(int)pid,"txt",t,path);
+}
+
+strcpy(link,proc);
+strcat(link,"/maps");
+FILE*fp=fopen(link,"r");
+if (fp!=NULL){
+    char line[1000];
+    int s=0;char done[4000][1000];
+    while(fgets(line,sizeof(line),fp)!=NULL){
+        char*slash=strchr(line,'/');    
+        if (slash!=NULL){
+            char*p=slash;
+            while(*p!='\n'&&*p!='\0')p++;
+            *p='\0';
+        }
+        else continue;
+        int temp=0;
+        for (int i=0;i<s;i++){
+            if (strcmp(done[i],slash)==0){temp=1;break;}
+        }
+        if (temp==0){
+            strcpy(done[s],slash);
+            s++;
+            char*t=type(slash);
+            printf("%-7d %-6s %-6s %s\n",(int)pid,"mem",t,slash);   
+        }
+    }
+    fclose(fp);
+}
+strcpy(link,proc);
+strcat(link,"/fd");
+DIR*dir=opendir(link);
+if (dir!=NULL){
+    struct dirent*entry;
+    int fd[1000];
+    int fd_count=0;
+    while((entry=readdir(dir))!=NULL){
+        int num=1;
+        if(entry->d_name[0]=='\0'){num=0;}
+        for (int i=0;entry->d_name[i]!='\0';i++){
+            if (entry->d_name[i]<'0'||entry->d_name[i]>'9'){num=0;break;}
+        }
+        if (num){
+            fd[fd_count++]=atoi(entry->d_name);
+        }       
+    }
+    closedir(dir);
+    qsort(fd,fd_count,sizeof(int),compare);
+    for (int i=0;i<fd_count;i++){
+        char fd_path[1000];
+        sprintf(fd_path,"%d",fd[i]);
+        strcpy(link,proc);
+        strcat(link,"/fd/");
+        strcat(link,fd_path);
+        len=readlink(link,path,sizeof(path)-1); 
+        if (len!=-1){
+            path[len]='\0';
+            char*t=type(path);
+            printf("%-7d %-6d %-6s %s\n",(int)pid,fd[i],t,path);
+        }
+    }
+}   fflush(stdout); }
