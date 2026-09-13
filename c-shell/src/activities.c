@@ -15,6 +15,7 @@ typedef struct{
     int job_id,bg,active,num;
     pid_t pgid;
 process prs[200];
+char cmd[1000];
 }job;
 
 job jobs[2000];
@@ -119,18 +120,40 @@ fflush(stdout);
 }
 
 
-void add_job(int job_id,pid_t pgid,int num,pid_t* pids, char cmd_names[][256],int bg){
+void add_job(int job_id,pid_t pgid,int num,pid_t* pids, char cmd_names[][256],int bg,char*cmd){
     int i=job_count++;
     jobs[i].job_id=job_id;
     jobs[i].pgid=pgid;
     jobs[i].num=num;
     jobs[i].bg=bg;
     jobs[i].active=1;
+    if (cmd){strcpy(jobs[i].cmd,cmd);}
+    else {jobs[i].cmd[0]='\0';}
     for (int j=0;j<num;j++){
         jobs[i].prs[j].pid=pids[j];
         strcpy(jobs[i].prs[j].name,cmd_names[j]);
         jobs[i].prs[j].state=0;
         jobs[i].prs[j].exit=1;
         jobs[i].prs[j].printed=0;
+    }
+}
+
+int stopped(){
+    update_state(-1,0);
+    for (int i=0;i<job_count;i++){
+        if (!jobs[i].active)continue;
+        for (int j=0;j<jobs[i].num;j++){
+            if (jobs[i].prs[j].state==1)return 1;
+        }
+    }
+    return 0;
+}
+
+void send_sighup(){
+    update_state(-1,0);
+    for (int i=0;i<job_count;i++){
+        if (jobs[i].active&&jobs[i].pgid>0){
+         kill(-jobs[i].pgid,SIGHUP);
+        }
     }
 }

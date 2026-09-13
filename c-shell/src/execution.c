@@ -74,6 +74,11 @@ return NULL;}
 
 int execute(char**input,int count,int bg){
     if (input[0]==NULL||count==0)return 1;
+    char cmd[1000]="";
+    for (int i=0;i<count;i++){
+        strcat(cmd,input[i]);
+        if (i<count-1)strcat(cmd," ");
+    }
     int pipeindex[1000];
     int n=1;
     pipeindex[0]=-1;
@@ -235,6 +240,10 @@ pid_t pid = fork();
         if (c==0)pgid=0;
         else pgid=pids[0];
         setpgid(0,pgid);
+            signal(SIGINT, SIG_DFL);
+            signal(SIGTSTP, SIG_DFL);
+            signal(SIGTTIN, SIG_DFL);
+            signal(SIGTTOU, SIG_DFL);        
         if (bg){close(sync_pipe[1]);
 char temp;
 read(sync_pipe[0],&temp,1);close(sync_pipe[0]);
@@ -291,18 +300,18 @@ writer_pids[c]=writer_pid;
     }
     free(p);}
     int job_id=prs_id++;
-    add_job(job_id,pids[0],n,pids,cmd_names,bg);
+    add_job(job_id,pids[0],n,pids,cmd_names,bg,cmd);
     if (bg){close(sync_pipe[0]);
 
 printf("[%d] %d\n",job_id,(int)pids[0]);
 fflush(stdout);
 close(sync_pipe[1]);
     }
-    else{
+    else{tcsetpgrp(STDIN_FILENO, pids[0]);int stopped=0;
     for (int c=0;c<n;c++){    int status;
         if (pids[c]>0){
         waitpid(pids[c], &status, WUNTRACED);
-        update_state(pids[c],status);
+        update_state(pids[c],status);if (WIFSTOPPED(status)){stopped=1;}
         }
         if (feeder_pids[c] > 0) {
             waitpid(feeder_pids[c], NULL, 0);}
@@ -312,6 +321,8 @@ close(sync_pipe[1]);
         
     
         }
+        tcsetpgrp(STDIN_FILENO, getpid());
+        if (stopped){printf("[%d] + Stopped    %s\n",job_id,cmd);}
         print_prs();}
         return 1;
 }
