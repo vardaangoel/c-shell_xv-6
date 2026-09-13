@@ -8,4 +8,5 @@ void add_job(int job_id,pid_t pgid,int num,pid_t* pids, char cmd_names[][256],in
 void update_state(pid_t pid,int status);
 void send_sighup();
 int stopped();
+void resume(char**input,int count);
 #endif

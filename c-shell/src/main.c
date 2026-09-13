@@ -92,9 +92,23 @@ peek(input+1,count-1);
                             locate(input+1,count-1);
                         }
                         else if(strcmp(input[0],"activities")==0){print_activities();}
+                        else if (strcmp(input[0],"resume")==0){
+                            resume(input,count);
+                        }
+                        else if (strcmp(input[0],"exit")==0){
+                            send_sighup();exit(0);
+                        }
+                        else if (strcmp(input[0],"cd")==0){
+                            if (count==1){chdir(getenv("HOME"));}
+                            else if (count==2){if (chdir(input[1])!=0){
+                                fprintf(stderr,"cshell: cd: %s: No such file or directory\n",input[1]);
+                            }}
+                            else {fprintf(stderr,"cshell: cd: too many arguments\n");}
+                        }
                         else {
                             flag=execute(input,count,bg);
                         }
+                        
                         if (flag==0&&!bg)break;
                     }}
 print_prs();                }

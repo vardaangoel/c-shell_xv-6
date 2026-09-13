@@ -5,7 +5,12 @@
 #include<stdlib.h>
 #include<string.h>
 #include<sys/wait.h>
+#include<sys/time.h>
 #include<errno.h>
+#include<signal.h>
+#include<time.h>
+#include <unistd.h>
+
 
 typedef struct{
     pid_t pid;char name[256];
@@ -20,6 +25,12 @@ char cmd[1000];
 
 job jobs[2000];
 int job_count=0;
+volatile sig_atomic_t timed_out = 0;
+
+void sigalrm_handler(int sig) {
+    (void)sig;
+    timed_out = 1;
+}
 
 void update_state(pid_t in_pid, int in_status){
 if (in_pid>0){
@@ -156,4 +167,151 @@ void send_sighup(){
          kill(-jobs[i].pgid,SIGHUP);
         }
     }
+}
+
+
+void resume(char**input,int count){
+    if (count<3||input[1]==NULL||input[1][0]!='%'){
+        printf("resume: invalid syntax\n");
+        fflush(stdout);
+        return;
+
+    }
+    char*num=input[1]+1;
+    if (*num=='\0'){
+        printf("resume: invalid syntax\n");
+        fflush(stdout);
+        return;
+    }
+    for (int i=0;num[i]!='\0';i++){
+        if (num[i]<'0'||num[i]>'9'){
+                    printf("resume: invalid syntax\n");
+        fflush(stdout);
+        return;
+        }
+    }
+    int job_id=atoi(num);char fgbg[3]="";int timeout=0;
+    if (strcmp(input[2],"bg")==0){strcat(fgbg,"bg");
+
+        if (count!=3){        printf("resume: invalid syntax\n");
+        fflush(stdout);
+        return;}
+    }
+    else if (strcmp(input[2],"fg")==0){
+strcat(fgbg,"fg");
+if (count==3){timeout=0;}
+else if(count==5){
+    if (strcmp(input[3],"--timeout")!=0||input[4]==NULL){
+        printf("resume: invalid syntax\n");
+        fflush(stdout);
+        return;
+    }
+    for (int i=0;input[4][i]!='\0';i++){
+if (input[4][i]<'0'||input[4][i]>'9'){
+    printf("resume: invalid syntax\n");
+        fflush(stdout);
+        return;
+}
+    }
+    timeout=atoi(input[4]);
+    if (timeout<=0){
+        printf("resume: invalid syntax\n");
+        fflush(stdout);
+        return;
+    }
+}
+else {printf("resume: invalid syntax\n");
+        fflush(stdout);
+        return;}
+    }
+    else {
+        printf("resume: invalid syntax\n");
+        fflush(stdout);
+        return;
+    }
+
+    update_state(-1,0);
+    int job_i=-1;
+    for (int i=0;i<job_count;i++){
+if (jobs[i].active&&jobs[i].job_id==job_id) {
+            job_i= i;
+            break;
+        }
+    }
+    if (job_i==-1) {printf("resume: no such job\n");
+        fflush(stdout);
+        return;
+    }
+if (strcmp(fgbg,"bg")==0) {
+        jobs[job_i].bg=1;
+        for (int k=0; k<jobs[job_i].num;k++) {
+            if (jobs[job_i].prs[k].state!=2) {
+                jobs[job_i].prs[k].state=0;
+            }
+        }
+        kill(-jobs[job_i].pgid, SIGCONT);
+        printf("[%d] + Running    %s\n",jobs[job_i].job_id,jobs[job_i].cmd);
+        fflush(stdout);
+        return;
+    }
+ if (strcmp(fgbg,"fg")==0){
+        printf("%s\n",jobs[job_i].cmd);
+        fflush(stdout);
+        tcsetpgrp(STDIN_FILENO, jobs[job_i].pgid);
+        for (int k=0;k<jobs[job_i].num;k++) {
+            if (jobs[job_i].prs[k].state != 2) {
+                jobs[job_i].prs[k].state=0;
+            }
+        }
+        kill(-jobs[job_i].pgid,SIGCONT);   
+
+
+      struct sigaction sa_old, sa_alrm;
+        if (timeout>0) {
+            timed_out=0;
+            sa_alrm.sa_handler = sigalrm_handler;
+            sigemptyset(&sa_alrm.sa_mask);
+            sa_alrm.sa_flags=0;
+            sigaction(SIGALRM,&sa_alrm,&sa_old);
+            alarm(timeout); 
+        }
+        int stopped=0;
+        for (int k=0;k<jobs[job_i].num;k++) {
+            if (jobs[job_i].prs[k].state == 2) continue;
+            int status;
+            pid_t res;
+            while (1) {
+                res = waitpid(jobs[job_i].prs[k].pid, &status, WUNTRACED);
+                if (res > 0) {
+                    update_state(res, status);
+                    if (WIFSTOPPED(status)) stopped=1;
+                    break;
+                } else if (res < 0) {
+                    if (errno == EINTR) {
+                        if (timed_out) break;
+                        continue;
+                    }
+                    break;
+                }
+            }
+            if (timed_out) break;
+        }
+        if (timeout>0) {
+            alarm(0);
+            sigaction(SIGALRM, &sa_old, NULL);
+        }
+        if (timed_out) {
+            kill(-jobs[job_i].pgid, SIGTERM);
+            printf("resume: job timed out\n");
+            fflush(stdout);
+            update_state(-1, 0);
+        }
+        tcsetpgrp(STDIN_FILENO,getpid());
+        if (stopped&&!timed_out) {
+            printf("[%d] + Stopped    %s\n", jobs[job_i].job_id, jobs[job_i].cmd);
+            fflush(stdout);
+        }
+        print_prs();
+    }
+    
 }
