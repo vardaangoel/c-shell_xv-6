@@ -9,4 +9,5 @@ void update_state(pid_t pid,int status);
 void send_sighup();
 int stopped();
 void resume(char**input,int count);
+void ping(char**input,int count);
 #endif

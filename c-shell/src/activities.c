@@ -315,3 +315,88 @@ if (strcmp(fgbg,"bg")==0) {
     }
     
 }
+
+
+void ping(char**input,int count){
+    if (count!=3||input[1]==NULL||input[2]==NULL){
+        printf("ping: invalid syntax\n");
+        fflush(stdout);
+        return;
+    }
+    if (input[2][0]=='\0'){
+    printf("ping: invalid syntax\n");
+            fflush(stdout);
+            return;
+}
+
+for (int i=0;input[2][i]!='\0';i++){
+        if (input[2][i]<'0'||input[2][i]>'9'){
+            printf("ping: invalid syntax\n");
+            fflush(stdout);
+            return;
+        }
+    }
+    int sig=atoi(input[2]);
+    
+    int Sig=sig%64;
+    update_state(-1,0);
+    char*target=input[1];
+    if (target[0]=='%'){
+        char*num=target+1;
+        if (*num=='\0'){
+            printf("ping: no such process found\n");
+fflush(stdout);
+            return;
+        }
+        for (int i=0;num[i]!='\0';i++){
+            if (num[i]<'0'||num[i]>'9'){
+                printf("ping: no such process found\n");
+fflush(stdout);
+                return;
+            }
+        }
+        int job_id=atoi(num);
+        int job_i=-1;
+        for (int i=0;i<job_count;i++){
+            if (jobs[i].active&&jobs[i].job_id==job_id) {
+                job_i= i;
+                break;
+            }
+        }
+        if (job_i==-1) {printf("ping: no such process found\n");
+fflush(stdout);
+            return;
+        }
+        kill(-jobs[job_i].pgid,Sig);
+        printf("Sent signal %d to %s\n",sig,target);
+        fflush(stdout);
+    }
+    else {
+        for (int i=0;target[i]!='\0';i++){
+            if (target[i]<'0'||target[i]>'9'){
+                printf("ping: no such process found\n");
+fflush(stdout);
+                return; 
+    }
+        }
+        pid_t pid=(pid_t)atoi(target);
+        int found=0;
+        for (int i=0;i<job_count;i++){
+            if (!jobs[i].active)continue;
+            for (int j=0;j<jobs[i].num;j++){
+                if (jobs[i].prs[j].pid==pid&&jobs[i].prs[j].state!=2){
+                    found=1;break;
+                }
+            }
+            if (found) break;
+        }
+        if (!found){
+            printf("ping: no such process found\n");
+            fflush(stdout);
+            return;
+        }
+        kill(pid,Sig);
+        printf("Sent signal %d to %s\n",sig,target);
+        fflush(stdout);
+    }
+    }
