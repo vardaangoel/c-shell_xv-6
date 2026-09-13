@@ -9,61 +9,20 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
+#include"activities.h"
 
 
-typedef struct{
-    pid_t pid;
-    int id;
-    char name[256];
-    int done,running,exit;
-}process;
-process prs[1000];
-int prs_count=0;
+// typedef struct{
+//     pid_t pid;
+//     int id;
+//     char name[256];
+//     int done,running,exit;
+// }process;
+// process prs[1000];
+// int prs_count=0;
 int prs_id=1;
 
 
-void sigchld(int sig){
-    int saved=errno;
-int status;
-pid_t pid;
-while ((pid=waitpid(-1,&status,WNOHANG))>0){
-    for (int i=0;i<prs_count;i++){
-        if (prs[i].running==1&&prs[i].pid==pid){
-            prs[i].done=1;
-            if (WIFEXITED(status))prs[i].exit=1;
-            else prs[i].exit=0;
-            break;
-        }
-    }
-}
-errno=saved;
-}
-
-void print_prs(){
-    int status;
-    pid_t pid;
-while ((pid=waitpid(-1,&status,WNOHANG))>0){
-    for (int i=0;i<prs_count;i++){
-        if (prs[i].running==1&&prs[i].pid==pid){
-            prs[i].done=1;
-            if (WIFEXITED(status)==1)prs[i].exit=1;
-            else prs[i].exit=0;
-            break;
-        }
-    }
-}
-for (int i=0;i<prs_count;i++){
-    if (prs[i].running&&prs[i].done){if (prs[i].exit){
-        printf("%s with pid %d exited normally\n",prs[i].name,(int)prs[i].pid);}
-        else{
-              printf("%s with pid %d exited abnormally\n",prs[i].name,(int)prs[i].pid);
-      
-        }
-        fflush(stdout);
-        prs[i].running=0;
-    }
-}
-}
 
 static int isfile(char*path){
      struct stat st;
@@ -126,7 +85,7 @@ int execute(char**input,int count,int bg){
     pid_t pids[256];
     pid_t feeder_pids[256];
     pid_t writer_pids[256];
-    char first_cmd[256]="";
+    char cmd_names[256][256];
     for (int i=0;i<256;i++){
         pids[i]=-1;
         feeder_pids[i]=-1;
@@ -183,9 +142,9 @@ return 0;}
     }
     if (num==0)continue;
     arg[num]=NULL;
-    if (c==0&&arg[0]!=NULL){if (arg[0][0]!='%')
-        strcpy(first_cmd,arg[0]);
-     else strcpy(first_cmd,arg[0]+1);
+    if (arg[0]!=NULL){if (arg[0][0]!='%')
+        strcpy(cmd_names[c],arg[0]);
+     else strcpy(cmd_names[c],arg[0]+1);
     }
     int stored[1000];
     for (int i=0;i<file_count;i++){
@@ -272,14 +231,18 @@ pid_t pid = fork();
                     if (bg&&sync_pipe[0]!=-1){close(sync_pipe[0]);close(sync_pipe[1]);}
         return 0;
     } 
-    else if (pid == 0) {
-        if (bg){setpgid(0,0);close(sync_pipe[1]);
+    else if (pid == 0) {pid_t pgid;
+        if (c==0)pgid=0;
+        else pgid=pids[0];
+        setpgid(0,pgid);
+        if (bg){close(sync_pipe[1]);
 char temp;
 read(sync_pipe[0],&temp,1);close(sync_pipe[0]);
-if (file_count==0&&in_fd==STDIN_FILENO){
-    int dev=open("/dev/null",O_RDONLY);
-    if (dev>=0){dup2(dev,STDIN_FILENO);close(dev);}
-}}
+// if (file_count==0&&in_fd==STDIN_FILENO){
+//     int dev=open("/dev/null",O_RDONLY);
+//     if (dev>=0){dup2(dev,STDIN_FILENO);close(dev);}
+// }
+}
         if (file_count == 1) {
             dup2(stored[0], STDIN_FILENO);
         } else if (file_count > 1) {
@@ -305,7 +268,11 @@ if (file_count==0&&in_fd==STDIN_FILENO){
         perror("execv error");
         exit(EXIT_FAILURE);
     } 
-    else {
+    else {pid_t pgid;pids[c]=pid;
+        if (c==0){pgid=pid;}
+        else pgid=pids[0];
+        setpgid(pid,pgid);
+
         if (file_count > 1) {
             close(pipefd[0]);
             close(pipefd[1]);
@@ -323,22 +290,20 @@ feeder_pids[c]=feeder_pid;
 writer_pids[c]=writer_pid;
     }
     free(p);}
+    int job_id=prs_id++;
+    add_job(job_id,pids[0],n,pids,cmd_names,bg);
     if (bg){close(sync_pipe[0]);
-int id=prs_id;prs_id++;
-prs[prs_count].pid=pids[0];
-prs[prs_count].id=id;
-strcpy(prs[prs_count].name,first_cmd);
-prs[prs_count].running=1;
-prs[prs_count].done=0;
-prs_count++;
-printf("[%d] %d\n",id,(int)pids[0]);
+
+printf("[%d] %d\n",job_id,(int)pids[0]);
 fflush(stdout);
 close(sync_pipe[1]);
     }
     else{
-    
-    for (int c=0;c<n;c++){
-        waitpid(pids[c], NULL, 0);
+    for (int c=0;c<n;c++){    int status;
+        if (pids[c]>0){
+        waitpid(pids[c], &status, WUNTRACED);
+        update_state(pids[c],status);
+        }
         if (feeder_pids[c] > 0) {
             waitpid(feeder_pids[c], NULL, 0);}
             if (writer_pids[c] > 0) {

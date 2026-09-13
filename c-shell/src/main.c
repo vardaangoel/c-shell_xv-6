@@ -13,6 +13,7 @@
 #include"execution.h"
 #include<signal.h>
 #include<errno.h>
+#include"activities.h"
 
 int main(){
 
@@ -67,6 +68,7 @@ peek(input+1,count-1);
                         else if (strcmp(input[0],"locate")==0){
                             locate(input+1,count-1);
                         }
+                        else if(strcmp(input[0],"activities")==0){print_activities();}
                         else {
                             flag=execute(input,count,bg);
                         }
