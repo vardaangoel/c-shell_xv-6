@@ -71,6 +71,7 @@ send_sighup();break;
                         input[count]=curr->val;count++;
                         curr=curr->next;
                     }
+                    input[count]=NULL;
                     if (curr!=NULL&&strcmp(curr->val,"&")==0){bg=1;
                         curr=curr->next;}
                     else if (curr!=NULL&&strcmp(curr->val,";")==0){
@@ -104,6 +105,10 @@ peek(input+1,count-1);
                         else if (strcmp(input[0],"spy")==0){
                             spy(input,count);
                         }
+                        else if (strcmp(input[0],"snoop")==0){
+                            snoop(input,count);
+                        }
+                        
             
                         else if (strcmp(input[0],"cd")==0){
                             if (count==1){chdir(getenv("HOME"));}
