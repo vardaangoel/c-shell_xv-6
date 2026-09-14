@@ -180,6 +180,10 @@ void peek(char**input,int count){
             for(size_t j=1;j<strlen(input[i]);j++){
                 if (input[i][j]=='n')n=1;
                 else if (input[i][j]=='r')r=1;
+                else {
+                    fprintf(stderr,"peek: invalid syntax\n");
+                    return;
+                }
             }
         }
        else{ all[num]=input[i];num++;}

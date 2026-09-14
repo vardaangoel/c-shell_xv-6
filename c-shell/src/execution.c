@@ -247,10 +247,10 @@ pid_t pid = fork();
         if (bg){close(sync_pipe[1]);
 char temp;
 read(sync_pipe[0],&temp,1);close(sync_pipe[0]);
-// if (file_count==0&&in_fd==STDIN_FILENO){
-//     int dev=open("/dev/null",O_RDONLY);
-//     if (dev>=0){dup2(dev,STDIN_FILENO);close(dev);}
-// }
+        if (file_count==0&&in_fd==STDIN_FILENO){
+            int dev=open("/dev/null",O_RDONLY);
+            if (dev>=0){dup2(dev,STDIN_FILENO);close(dev);}
+        }
 }
         if (file_count == 1) {
             dup2(stored[0], STDIN_FILENO);

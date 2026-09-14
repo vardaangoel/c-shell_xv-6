@@ -37,7 +37,7 @@ static void print_info(char* name,struct stat *sb,int l){
 static int compare(const void *a, const void *b){
     return strcmp(*(char**)a,*(char**)b);
 }
-static void reveal_direc(char*path,int a,int l){
+static void reveal_direc(char*path,int a,int t,const char*prefix){
 char p[PATH_MAX];
 if (strcmp(path,"~")==0){strcpy(p,home_shell);}
 else if (strncmp(path,"~/",2)==0){
@@ -73,19 +73,32 @@ struct stat sb;
             if (lstat(full_path, &entry_stat) == -1) {free(all[i]);
                 continue;
             }
-            print_info(all[i], &entry_stat, l);
+            char display[PATH_MAX + 2];
+            if (prefix[0]=='\0') {
+                snprintf(display, sizeof(display), "%s", all[i]);
+            } else {
+                snprintf(display, sizeof(display), "%s/%s", prefix, all[i]);
+            }
+            if (t && S_ISDIR(entry_stat.st_mode)) {
+                printf("%s/\n", display);
+            } else {
+                print_info(display, &entry_stat, 0);
+            }
+            if (t && S_ISDIR(entry_stat.st_mode)) {
+                reveal_direc(full_path, a, t, display);
+            }
             free(all[i]);
         }
         
     } else {
-        print_info(path, &sb, l);
+        print_info(path, &sb, 0);
     }
 }
 
 
 
 void reveal(char**input,int count){
-    int a=0,l=0;
+    int a=0,t=0;
     char*path[256];
 int path_cnt=0;
 for (int i=0;i<count;i++){
@@ -94,24 +107,28 @@ for (int i=0;i<count;i++){
             if (input[i][j]=='a'){
                 a=1;
             }
-            else if(input[i][j]=='l'){
-                l=1;
+            else if(input[i][j]=='t'){
+                t=1;
             }
             else if (input[i][j]=='\n'||input[i][j]=='\r'||input[i][j]==' '){continue;}
             else {
-                fprintf(stderr,"invalid flag\n");
+                fprintf(stderr,"reveal: invalid syntax\n");
                 return;
             }
         }
     }
     else{path[path_cnt]=input[i];path_cnt++;}
 }
-if (path_cnt==0){path[0]=".";path_cnt=1;}
+    if (path_cnt>1){
+        fprintf(stderr,"reveal: invalid syntax\n");
+        return;
+    }
+    if (path_cnt==0){path[0]=".";path_cnt=1;}
 for (int i=0;i<path_cnt;i++){
     if (path_cnt>1) {
             printf("%s:\n",path[i]);
         }
-    reveal_direc(path[i],a,l);     
+    reveal_direc(path[i],a,t,"");     
         if (i<path_cnt-1) printf("\n");
     }
 }

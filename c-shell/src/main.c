@@ -30,7 +30,7 @@ int main(){
 struct sigaction sa;
 sa.sa_handler=sigchld;
 sigemptyset(&sa.sa_mask);
-sa.sa_flags=SA_RESTART;
+sa.sa_flags=0;
 sigaction(SIGCHLD,&sa,NULL);
 pid_t shellpgid=getpid();
 setpgid(shellpgid,shellpgid);
@@ -120,7 +120,7 @@ peek(input+1,count-1);
                         else {
                             flag=execute(input,count,bg);
                         }
-                        
+
                         if (flag==0&&!bg)break;
                     }}
 print_prs();                }
