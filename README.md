@@ -3,6 +3,13 @@ Roll number: 2025117001
 
 Two projects - cshell and xv6.
 
+Repo structure:
+    
+    mini-project1/c-shell
+    mini-project1/xv6
+    mini-project1/AI-usage.pdf
+    mini-project1/README.md
+
 Requirements
 
 For c-shell, a Linux system with gcc, make, and the standard POSIX libraries is needed.
